@@ -154,13 +154,16 @@ async def identify_plant(
     top_candidates: list[PlantSelection] = []
     if isinstance(raw_candidates, list):
         seen_plant_ids: set[int] = set()
+        if plant_id is not None:
+            seen_plant_ids.add(plant_id)
+
         for item in raw_candidates:
             if not isinstance(item, dict):
                 continue
             candidate_name = item.get("plant_name")
             if not isinstance(candidate_name, str) or not candidate_name.strip():
                 continue
-            candidate_id, candidate_resolved_name = _resolve_plant_from_name(candidate_name, service_client)
+            candidate_id, _ = _resolve_plant_from_name(candidate_name, service_client)
             if candidate_id is None:
                 continue
             if candidate_id in seen_plant_ids:
@@ -186,7 +189,15 @@ async def identify_plant(
 
     fallback_plants: list[PlantSelection] | None = None
     if confidence < settings.ml_min_confidence:
-        fallback_rows = service_client.table("plants").select("id, name_ro, name_latin").order("name_ro").execute().data or []
+        fallback_rows = (
+            service_client.table("plants")
+            .select("id, name_ro, name_latin")
+            .order("name_ro")
+            .limit(10)
+            .execute()
+            .data
+            or []
+        )
         fallback_plants = [PlantSelection.model_validate(row) for row in fallback_rows]
 
     return IdentifyResponse(
