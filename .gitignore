@@ -1,0 +1,7 @@
+.vscode
+.env
+.env.example
+__pycache__
+*.pyc
+migrations/__pycache__
+migrations/*.pyc
