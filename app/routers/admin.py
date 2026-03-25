@@ -59,6 +59,29 @@ def delete_user(
     return {"deleted": True, "user_id": user_id}
 
 
+@router.delete("/poi/{poi_id}")
+def delete_poi(
+    poi_id: int,
+    _: CurrentUser = Depends(require_admin),
+    service_client: Client = Depends(get_supabase_service_client),
+) -> dict[str, object]:
+    existing = (
+        service_client.table("points_of_interest")
+        .select("id")
+        .eq("id", poi_id)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+
+    if not existing:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="POI not found")
+
+    service_client.table("points_of_interest").delete().eq("id", poi_id).execute()
+    return {"deleted": True, "poi_id": poi_id}
+
+
 @router.get("/images", response_model=list[POIImageOut])
 def list_pending_images(
     _: CurrentUser = Depends(require_admin),

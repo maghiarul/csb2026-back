@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     supabase_key: str
     supabase_service_key: str
     supabase_jwt_secret: str
-    ml_model_path: str = "models/plant_identifier.pkl"
+    ml_model_path: str = "models/trained/resnet50.pt"
     ml_min_confidence: float = 0.6
     debug: bool = False
     signed_url_expires_seconds: int = 3600

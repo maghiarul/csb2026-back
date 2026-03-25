@@ -5,3 +5,5 @@ __pycache__
 *.pyc
 migrations/__pycache__
 migrations/*.pyc
+/models/medicinal plants
+/models/trained

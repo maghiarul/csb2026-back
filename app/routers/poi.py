@@ -19,6 +19,7 @@ def _extract_error_message(exc: Exception, fallback: str) -> str:
 @router.get("", response_model=list[POIListItem])
 def list_poi(
     plant_id: int | None = Query(default=None),
+    plant_ids: list[int] | None = Query(default=None),
     lat: float | None = Query(default=None, ge=-90, le=90),
     lng: float | None = Query(default=None, ge=-180, le=180),
     radius_km: float | None = Query(default=None, gt=0, le=50),
@@ -30,6 +31,12 @@ def list_poi(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="lat, lng and radius_km must be provided together",
         )
+
+    selected_plant_ids: set[int] = set()
+    if plant_id is not None:
+        selected_plant_ids.add(int(plant_id))
+    if plant_ids:
+        selected_plant_ids.update(int(item) for item in plant_ids)
 
     try:
         response = service_client.rpc(
@@ -49,6 +56,9 @@ def list_poi(
 
     result: list[POIListItem] = []
     for row in response.data or []:
+        if selected_plant_ids and int(row["plant_id"]) not in selected_plant_ids:
+            continue
+
         image_url = None
         if row.get("image_path"):
             image_url = generate_signed_image_url(row["image_path"], service_client)
@@ -112,6 +122,19 @@ async def create_poi(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Failed to create POI")
 
     row = rows[0]
+    try:
+        (
+            service_client.table("poi_images")
+            .update({"status": "approved"})
+            .eq("id", row["image_id"])
+            .execute()
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Failed to finalize POI image status: {_extract_error_message(exc, 'Unknown error')}",
+        ) from exc
+
     return {
         "id": row["poi_id"],
         "user_id": row["user_id"],
@@ -120,7 +143,7 @@ async def create_poi(
         "created_at": row["created_at"],
         "image": {
             "id": row["image_id"],
-            "status": row["image_status"],
+            "status": "approved",
             "image_url": signed_url,
         },
     }
