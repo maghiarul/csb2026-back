@@ -7,3 +7,4 @@ migrations/__pycache__
 migrations/*.pyc
 /models/medicinal plants
 /models/trained
+/models/*
